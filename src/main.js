@@ -2,11 +2,13 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
+import axios from 'axios'
 import './assets/css/public.less'
 // import echarts from 'echarts'
 const echarts = require('echarts')
-import axios from 'axios'
+import chalk from '../public/static/theme/chalk.json'
 
+echarts.registerTheme('chalk', chalk)
 Vue.prototype.$echarts = echarts
 
 // 后端koa项目提供服务的基础路径
