@@ -19,10 +19,79 @@ export default {
       timerId: null, // 定时器标识
     }
   },
+  mounted() {
+    // 由于initChart()方法 操作了DOM元素，因此需要在 mounted() 生命周期方法中调用
+    this.initChart()
+    this.getData()
+    window.addEventListener('resize', this.screenAdapter)
+    this.screenAdapter()
+  },
+  destroyed() {
+    clearInterval(this.timerId)
+    window.removeEventListener('resize', this.screenAdapter)
+  },
   methods: {
     initChart() {
-      // 初始化 echart 实例对象, init()方法会返回该实例对象，最好保存在 data 选项中
+      // 初始化 echarts 实例对象, init()方法会返回该实例对象，最好保存在 data 选项中
       this.chartInstance = this.$echarts.init(this.$refs.seller_chart_ref, 'chalk')
+
+      // 把Echarts的图表配置项option进行拆分，方便维护
+      // initOption是初始化配置option
+      const initOption = {
+        title: {
+          text: '▎商家销售统计',
+          left: 26,
+          top: 26,
+        },
+        grid: {
+          //坐标轴的相关配置
+          top: '20%',
+          bottom: '3%',
+          left: '3%',
+          right: '6%',
+          containLabel: true, //grid 区域是否包含坐标轴的刻度标签，防止标签溢出容器
+        },
+        xAxis: {
+          type: 'value',
+        },
+        yAxis: {
+          type: 'category',
+        },
+        tooltip: {
+          trigger: 'axis', //坐标轴触发
+          axisPointer: {
+            //坐标轴指示器配置项
+            type: 'line',
+            z: 0,
+            lineStyle: {
+              type: 'solid',
+              color: 'rgba(91, 92, 110, 0.4)',
+            },
+          },
+        },
+        series: [
+          {
+            type: 'bar',
+            label: {
+              show: true, // 图形上的文本标签，可用于说明图形的一些数据信息，默认不显示
+              position: 'right', // 默认标签显示在图形内部
+            },
+            itemStyle: {
+              color: new this.$echarts.graphic.LinearGradient(0, 1, 1, 0, [
+                {
+                  offset: 0, // 0%色标的颜色
+                  color: '#5052ee',
+                },
+                {
+                  offset: 1,
+                  color: '#ab6ee5',
+                },
+              ]),
+            },
+          },
+        ],
+      }
+      this.chartInstance.setOption(initOption)
 
       // 对图表进行鼠标事件的监听
       this.chartInstance.on('mouseover', () => {
@@ -59,72 +128,21 @@ export default {
       const start = (this.currentPage - 1) * 5
       const end = this.currentPage * 5
       const showData = this.allData.slice(start, end) // 取出分页展示的当前页面的数据
-
       const sellerNames = showData.map(item => item.name) // y轴上的数据
       const sellerValues = showData.map(item => item.value) // x 轴上的数据
-      const option = {
-        title: {
-          text: '▎商家销售统计',
-          textStyle: {
-            fontSize: 66,
-          },
-          left: 30,
-          top: 30,
-        },
-        grid: {
-          //坐标轴的相关配置
-          top: '20%',
-          bottom: '3%',
-          left: '3%',
-          right: '6%',
-          containLabel: true, //grid 区域是否包含坐标轴的刻度标签，防止标签溢出容器
-        },
-        xAxis: {
-          type: 'value',
-        },
+
+      // dataOption是获取数据之后的配置option
+      const dataOption = {
         yAxis: {
-          type: 'category',
           data: sellerNames,
-        },
-        tooltip: {
-          trigger: 'axis', //坐标轴触发
-          axisPointer: {
-            //坐标轴指示器配置项
-            type: 'line',
-            z: 0,
-            lineStyle: {
-              type: 'solid',
-              width: 60,
-              color: 'rgba(91, 92, 110, 0.4)',
-            },
-          },
         },
         series: [
           {
-            type: 'bar',
             data: sellerValues,
-            barWidth: 60, // 柱状图条目宽度
-            label: {
-              show: true, // 图形上的文本标签，可用于说明图形的一些数据信息，默认不显示
-              position: 'right', // 默认标签显示在图形内部
-            },
-            itemStyle: {
-              barBorderRadius: [0, 33, 33, 0], //（顺时针左上，右上，右下，左下）
-              color: new this.$echarts.graphic.LinearGradient(0, 1, 1, 0, [
-                {
-                  offset: 0, // 0%色标的颜色
-                  color: '#5052ee',
-                },
-                {
-                  offset: 1,
-                  color: '#ab6ee5',
-                },
-              ]),
-            },
           },
         ],
       }
-      this.chartInstance.setOption(option)
+      this.chartInstance.setOption(dataOption)
     },
 
     startInterval() {
@@ -142,14 +160,40 @@ export default {
         this.updateChart()
       }, 3000)
     },
-  },
-  mounted() {
-    // 由于initChart()方法 操作了DOM元素，因此需要在 mounted() 生命周期方法中调用
-    this.initChart()
-    this.getData()
-  },
-  destroyed() {
-    clearInterval(this.timerId)
+
+    screenAdapter() {
+      // 当图表容器的大小发生变化时，调用该方法，完成图表大小的自适应
+      const titleFontSize = (this.$refs.seller_chart_ref.offsetWidth / 100) * 3.4 // 数值是自己试出来的
+      const axisPointerWidth = (this.$refs.seller_chart_ref.offsetWidth / 100) * 3.6
+      const seriesBarWidth = (this.$refs.seller_chart_ref.offsetWidth / 100) * 3.6
+
+      // initOption是初始化配置option
+      const adapterOption = {
+        title: {
+          textStyle: {
+            fontSize: titleFontSize,
+          },
+        },
+        tooltip: {
+          axisPointer: {
+            lineStyle: {
+              width: axisPointerWidth,
+            },
+          },
+        },
+        series: [
+          {
+            barWidth: seriesBarWidth, // 柱状图条目宽度
+            itemStyle: {
+              barBorderRadius: [0, seriesBarWidth / 2, seriesBarWidth / 2, 0], //（顺时针左上，右上，右下，左下）
+            },
+          },
+        ],
+      }
+      this.chartInstance.setOption(adapterOption)
+
+      this.chartInstance.resize()
+    },
   },
 }
 </script>
